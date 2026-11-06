@@ -138,11 +138,6 @@ def dome_parts():
     parts = [husk_shell(PLATE_T)]
     # thin flange (the hinge/latch land) flush with the husk
     parts.append(revolve([(DOME_R - 2.0, PLATE_T), (39.2, PLATE_T), (39.2, PLATE_T + 1.6), (DOME_R - 2.0, PLATE_T + 1.6)], seg=96))
-    # three coconut eyes clustered at the top, half-sunk into the husk
-    for a in (np.radians(90), np.radians(210), np.radians(330)):
-        tt = np.radians(78)
-        c = [(DOME_R + 0.5)*np.cos(tt)*np.cos(a), (DOME_R + 0.5)*np.cos(tt)*np.sin(a), PLATE_T + (DOME_R + 0.5)*np.sin(tt)]
-        parts.append(sphere(c, 2.7))
     # hinge lug (middle) with a bridge to the flange
     parts.append(hinge_lug(-3.0, 3.0))
     parts.append(box(HINGE_X, -DOME_R + 1.0, -3.0, 3.0, PLATE_T, PLATE_T + 2.0))
