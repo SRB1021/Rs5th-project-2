@@ -12,7 +12,8 @@ RIM_R = 33.0          # can top rim outer radius (12 oz can ~66 mm)
 OPEN_R = 30.5         # opening left in the ring plate (access to pull tab / sip)
 PLATE_R = 38.5
 PLATE_T = 3.0
-DOME_R, DOME_H, DOME_WALL = 38.5, 32.0, 2.0
+DOME_R, DOME_WALL = 38.5, 2.0
+DOME_H = DOME_R        # true hemisphere: half a coconut
 HINGE_X, HINGE_Z = -40.5, 3.6
 PIN_HOLE, LUG_R = 1.1, 3.6
 PLASTIC = 1.27e-3
@@ -107,28 +108,45 @@ def ring_parts():
     return parts
 
 
+def husk_shell(z0, nt=36, nphi=144):
+    """Closed hollow hemisphere (half a coconut): fibrous husk ridges outside, smooth inside."""
+    m = Mesh()
+    t = np.linspace(0, np.pi/2, nt + 1)
+    phi = np.linspace(0, 2*np.pi, nphi, endpoint=False)
+    def pt(R, ti, pj, fib):
+        # fibres run pole -> equator, slightly twisted; fade to 0 at the pole
+        r = R * (1 + fib * 0.013 * np.cos(ti) * (0.5 + 0.5*np.sin(30*pj + 5*ti)))
+        return np.array([r*np.cos(ti)*np.cos(pj), r*np.cos(ti)*np.sin(pj), z0 + r*np.sin(ti)])
+    O = [[pt(DOME_R, ti, pj, 1) for pj in phi] for ti in t]
+    I = [[pt(DOME_R - DOME_WALL, ti, pj, 0) for pj in phi] for ti in t]
+    for i in range(nt):
+        for j in range(nphi):
+            k = (j + 1) % nphi
+            if i < nt - 1:
+                m.quad(O[i][j], O[i][k], O[i+1][k], O[i+1][j])
+                m.quad(I[i][j], I[i+1][j], I[i+1][k], I[i][k])
+            else:
+                m.tri(O[i][j], O[i][k], O[nt][0])
+                m.tri(I[i][k], I[i][j], I[nt][0])
+    for j in range(nphi):
+        k = (j + 1) % nphi
+        m.quad(O[0][j], I[0][j], I[0][k], O[0][k])               # bottom rim face
+    return m
+
+
 def dome_parts():
-    parts = []
-    # hollow coconut shell with fibrous ripple bands
-    n = 40
-    t = np.linspace(0, np.pi/2, n)
-    outer = [((DOME_R * np.cos(a)) + 0.45*np.sin(a*16)*np.sin(a*2)*np.cos(a), PLATE_T + DOME_H*np.sin(a)) for a in t]
-    outer = [(max(r, 0.0), z) for r, z in outer]; outer[-1] = (0.0, outer[-1][1])
-    inner = [((DOME_R - DOME_WALL) * np.cos(a), PLATE_T + (DOME_H - DOME_WALL) * np.sin(a)) for a in t[::-1]]
-    inner[0] = (0.0, inner[0][1])
-    loop = outer + inner
-    # drop duplicate axis points handled by revolve (r=0 edge skipped)
-    parts.append(revolve(loop, seg=96))
-    parts.append(revolve([(DOME_R - 2.0, PLATE_T), (40.0, PLATE_T), (40.0, PLATE_T + 2.0), (DOME_R - 2.0, PLATE_T + 2.0)], seg=96))  # flange
-    # three coconut 'eyes'
+    parts = [husk_shell(PLATE_T)]
+    # thin flange (the hinge/latch land) flush with the husk
+    parts.append(revolve([(DOME_R - 2.0, PLATE_T), (39.2, PLATE_T), (39.2, PLATE_T + 1.6), (DOME_R - 2.0, PLATE_T + 1.6)], seg=96))
+    # three coconut eyes clustered at the top, half-sunk into the husk
     for a in (np.radians(90), np.radians(210), np.radians(330)):
-        tt = np.radians(62)
-        r = (DOME_R) * np.cos(tt) * 0.96
-        parts.append(sphere([r*np.cos(a), r*np.sin(a), PLATE_T + DOME_H*np.sin(tt)], 3.0))   # on the outside surface
+        tt = np.radians(78)
+        c = [(DOME_R + 0.5)*np.cos(tt)*np.cos(a), (DOME_R + 0.5)*np.cos(tt)*np.sin(a), PLATE_T + (DOME_R + 0.5)*np.sin(tt)]
+        parts.append(sphere(c, 2.7))
     # hinge lug (middle) with a bridge to the flange
     parts.append(hinge_lug(-3.0, 3.0))
-    parts.append(box(HINGE_X - 0.0, -DOME_R + 1.0, -3.0, 3.0, PLATE_T, PLATE_T + 2.0))
-    # latch: tab hanging from flange at +X with an inward bump that snaps under the catch
+    parts.append(box(HINGE_X, -DOME_R + 1.0, -3.0, 3.0, PLATE_T, PLATE_T + 2.0))
+    # latch: tab hanging from the flange at +X with an inward bump that snaps under the catch
     parts.append(box(38.0, 43.0, -6, 6, PLATE_T, PLATE_T + 2.0))
     parts.append(box(41.4, 43.0, -6, 6, -0.3, PLATE_T))
     parts.append(box(40.7, 41.4, -5, 5, 0.2, 1.3))
