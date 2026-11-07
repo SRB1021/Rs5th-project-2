@@ -19,6 +19,7 @@ R_C = 50.0                          # crown (can well section) radius
 CROWN_CONE = R_C - R_T              # 45 deg flare, 16 mm
 R_F, RIM = 90.0, 30.0               # lily pad radius, flat rim height (45 deg underside)
 CN = R_F - R_T
+NOPAD = False                       # True: plain slim trunk, no lily pad / bulge
 HK = 60.0                           # island height
 SHOT_RHO, SHOT_PACK = 7.85e-3, 0.60
 PLASTIC, WATER, CAN_G, CAN_COG = 1.27e-3, 1.0e-3, 380.0, 55.0
@@ -42,20 +43,26 @@ def profiles(zt, zr):
     island_out = [(R_T + 6, zb + 59), (R_T + 18, zb + 54), (R_T + 27, zb + 46), (ISL_R, zb + 38), (ISL_R, zb + 34), (32, zb)]
     chamber = [(R_B + 6, zb + 14), (R_B + 6, zb + W), (31.3, zb + W), (ISL_R - 2.3, zb + 34), (ISL_R - 2.3, zb + 38),
                (59.3, zb + 45), (51.0, zb + 52.3), (40.0, zb + 57.3), (R_T - W, zb + HK - 1.6), (0, zb + HK - 1.6)]
-    outer = ([(0, FLOOR), (BORE_LOW, FLOOR), (BORE_LOW, LEDGE), (BORE_UP, LEDGE), (BORE_UP, Z0), (R_C, Z0), (R_C, 0), (R_T, cone_z)]
-             + rings(cone_z - 3, zr + RIM + 2, R_T)
-             + [(R_T, zr + RIM), (R_F, zr + RIM), (R_F, zr), (R_T, zr - CN)] + rings(zr - CN - 4, zt + 4, R_T)
-             + [(R_T, zt)] + island_out + [(R_B, zb), (R_B, zb + 14)] + chamber)
-    cav = [(0, zt), (R_T - W, zt), (R_T - W, zr - CN + 0.66), (R_F - W, zr + 0.66), (R_F - W, zr + RIM - W), (R_T - W, zr + RIM - W),
-           (R_T - W, cone_z + 0.66), (R_C - W, 0.66), (R_C - W, Z0 - W), (42.2, Z0 - W), (42.2, FLOOR - W), (0, FLOOR - W)]
+    head = [(0, FLOOR), (BORE_LOW, FLOOR), (BORE_LOW, LEDGE), (BORE_UP, LEDGE), (BORE_UP, Z0), (R_C, Z0), (R_C, 0), (R_T, cone_z)]
+    if NOPAD:
+        mid = rings(cone_z - 3, zt + 4, R_T)
+    else:
+        mid = (rings(cone_z - 3, zr + RIM + 2, R_T) + [(R_T, zr + RIM), (R_F, zr + RIM), (R_F, zr), (R_T, zr - CN)]
+               + rings(zr - CN - 4, zt + 4, R_T))
+    outer = head + mid + [(R_T, zt)] + island_out + [(R_B, zb), (R_B, zb + 14)] + chamber
+    padc = [] if NOPAD else [(R_T - W, zr - CN + 0.66), (R_F - W, zr + 0.66), (R_F - W, zr + RIM - W), (R_T - W, zr + RIM - W)]
+    cav = [(0, zt), (R_T - W, zt)] + padc + [(R_T - W, cone_z + 0.66), (R_C - W, 0.66), (R_C - W, Z0 - W), (42.2, Z0 - W), (42.2, FLOOR - W), (0, FLOOR - W)]
     void = [(R_B + 6, zb + W)] + chamber[2:] + [(0, zb + 14), (R_B + 6, zb + 14)]
     return zb, outer, cav, void
 
 
 def envelope(zt, zr):
     zb = zt - HK
-    z = [zb, zb + 34, zb + 38, zb + 46, zb + 54, zb + 59, zt, zr - CN, zr, zr + RIM, zr + RIM + 1e-3, -CROWN_CONE, 0.0, Z0]
-    r = [32, ISL_R, ISL_R, R_T + 27, R_T + 18, R_T + 6, R_T, R_T, R_F, R_F, R_T, R_T, R_C, R_C]
+    z = [zb, zb + 34, zb + 38, zb + 46, zb + 54, zb + 59, zt]
+    r = [32, ISL_R, ISL_R, R_T + 27, R_T + 18, R_T + 6, R_T]
+    if not NOPAD:
+        z += [zr - CN, zr, zr + RIM, zr + RIM + 1e-3]; r += [R_T, R_F, R_F, R_T]
+    z += [-CROWN_CONE, 0.0, Z0]; r += [R_T, R_C, R_C]
     return np.array(z), np.array(r)
 
 
